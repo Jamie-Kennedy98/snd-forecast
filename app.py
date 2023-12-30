@@ -8,7 +8,7 @@ import streamlit as st
 import pandas as pd
 from functions.extract_data import create_df
 from functions.clean_data import clean_cols, convert_numerical, convert_to_date, adjust_month_to_marketing_year, new_date_cols
-from functions.arima_models import prepare_for_modelling, imports_model, plot_imports
+from functions.arima_models import prepare_for_modelling, imports_model, plot_imports, harvest_model, plot_harvest
 from statsmodels.tsa.arima.model import ARIMA
 import warnings
 
@@ -57,8 +57,40 @@ for i in range(4):
     html_transposed = html_transposed.replace('<td>0</td>', '<td style="color: red;">0</td>', 1)
 
 # Display the plot in Streamlit
-st.pyplot(plot_imports(imports_data, integrated_forecast, integrated_confidence_intervals))
+st.pyplot(plt)
 # Display the transposed DataFrame as HTML
 st.markdown(html_transposed, unsafe_allow_html=True)
 
+############## Area Harvested ########################
+st.header('Analysis of Area Harvested')
+# do analysis for imports
+harvest_data, forecast_mean, confidence_intervals = harvest_model(df_cleaned)
+# Generate the plot
+plt = plot_harvest(harvest_data, forecast_mean, confidence_intervals)
 
+# Sample data
+data = {
+    "Date": ["Dec 2022/23 Proj.", "Jan 2022/23 Proj.", "Feb 2022/23 Proj.", "Mar 2022/23 Proj.", "Apr 2022/23 Proj."],
+    "Forecasted": forecast_mean,
+    "Actual": [most_recent['Area_Harvested'], 0, 0, 0, 0],
+    "Difference": [most_recent['Area_Harvested']-forecast_mean[0], 0, 0, 0, 0]
+}
+
+# Convert to DataFrame
+df = pd.DataFrame(data)
+
+# Transpose the DataFrame
+df_transposed = df.T
+
+# Convert transposed DataFrame to HTML without the index
+html_transposed = df_transposed.to_html(header=False, index=True)
+
+# Add custom styling for the 'Difference' column
+html_transposed = html_transposed.replace('<td>0.808218</td>', '<td style="color: green;">0.808218</td>')
+for i in range(4):
+    html_transposed = html_transposed.replace('<td>0</td>', '<td style="color: red;">0</td>', 1)
+
+# Display the plot in Streamlit
+st.pyplot(plt)
+# Display the transposed DataFrame as HTML
+st.markdown(html_transposed, unsafe_allow_html=True)

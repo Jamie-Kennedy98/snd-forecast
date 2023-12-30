@@ -124,6 +124,101 @@ def plot_imports(imports_data, integrated_forecast, integrated_confidence_interv
     
     return plt
 
+def harvest_model(df_cleaned):
+    # focus on area harvested column
+    harvest_data = df_cleaned[['Marketing_Year_Month', 'Area_Harvested']].copy()
+
+    harvest_data['Marketing_Year_Month'] = pd.to_datetime(harvest_data['Marketing_Year_Month'], errors='coerce')
+    # Sort the data based on dates
+    harvest_data = harvest_data.sort_values(by='Marketing_Year_Month')
+
+    # Set the index
+    harvest_data.set_index('Marketing_Year_Month', inplace=True)
+
+    # Fitting an ARIMA(1,0,1) model to the differenced series
+    # Suppressing warnings for model fitting
+    warnings.filterwarnings("ignore")
+
+    model = ARIMA(harvest_data, order=(1, 0, 1))
+    model_fit = model.fit()
+
+    # Trying different ARIMA configurations to find a better fitting model
+    # We will vary p and q from 0 to 2 and keep d as 0 since we have already differenced the series once
+
+    best_aic = float("inf")
+    best_bic = float("inf")
+    best_order = None
+    best_model = None
+
+    # Iterating over different values of p and q
+    for p in range(3):
+        for q in range(3):
+            try:
+                # Fitting the ARIMA model
+                model = ARIMA(harvest_data, order=(p, 0, q))
+                model_fit = model.fit()
+
+                # Checking if the current model has a lower AIC and BIC than the best so far
+                if model_fit.aic < best_aic and model_fit.bic < best_bic:
+                    best_aic = model_fit.aic
+                    best_bic = model_fit.bic
+                    best_order = (p, 0, q)
+                    best_model = model_fit
+            except:
+                continue
+
+    # Number of steps to forecast
+    n_steps = 5
+
+    # Forecasting the next few steps
+    forecast = best_model.get_forecast(steps=n_steps)
+
+    # Extracting forecast mean and confidence intervals
+    forecast_mean = forecast.predicted_mean
+
+    # Correcting the approach to get the confidence intervals
+    confidence_intervals = forecast.conf_int()
+
+    # Adjusting the forecast index to align with the original data's timeline
+
+    # Getting the last date from the original data
+    last_date = harvest_data.index[-1]
+
+    # Generating new forecast dates starting from the day after the last date
+    forecast_dates = pd.date_range(start=last_date, periods=n_steps + 1, freq='M')[1:]
+
+    # Assigning the new dates to the forecast and confidence intervals
+    forecast_mean.index = forecast_dates
+    confidence_intervals.index = forecast_dates
+
+    return harvest_data, forecast_mean, confidence_intervals
+
+def plot_harvest(harvest_data, forecast_mean, confidence_intervals):
+    plt.figure(figsize=(12, 6))
+
+    # Plotting the original 'Imports' data
+    plt.plot(harvest_data['Area_Harvested'], color='blue', label='Original Data')
+
+    # Plotting the forecast
+    plt.plot(forecast_mean, color='red', marker='o', label='Forecast')
+
+    # Plotting the confidence intervals
+    plt.fill_between(confidence_intervals.index, 
+                    confidence_intervals['lower Area_Harvested'], 
+                    confidence_intervals['upper Area_Harvested'], 
+                    color='pink', alpha=0.3, label='Confidence Interval')
+
+    plt.title('Forecast of Area_Harvested with Confidence Intervals')
+    plt.xlabel('Date')
+    plt.ylabel('Area_Harvested')
+    plt.legend()
+    plt.grid(True)
+
+    return plt
+
+
+
+
 
     
 
