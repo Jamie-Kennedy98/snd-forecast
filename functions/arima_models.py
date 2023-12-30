@@ -216,6 +216,101 @@ def plot_harvest(harvest_data, forecast_mean, confidence_intervals):
 
     return plt
 
+def yield_model(df_cleaned):
+    # focus on area harvested column
+    yield_data = df_cleaned[['Marketing_Year_Month', 'Yield_per_Acre']].copy()
+
+    yield_data['Marketing_Year_Month'] = pd.to_datetime(yield_data['Marketing_Year_Month'], errors='coerce')
+    # Sort the data based on dates
+    yield_data = yield_data.sort_values(by='Marketing_Year_Month')
+
+    # Set the index
+    yield_data.set_index('Marketing_Year_Month', inplace=True)
+
+    # Fitting an ARIMA(1,0,1) model to the differenced series
+    # Suppressing warnings for model fitting
+    warnings.filterwarnings("ignore")
+
+    model = ARIMA(yield_data, order=(1, 0, 1))
+    model_fit = model.fit()
+
+    # Trying different ARIMA configurations to find a better fitting model
+    # We will vary p and q from 0 to 2 and keep d as 0 since we have already differenced the series once
+
+    best_aic = float("inf")
+    best_bic = float("inf")
+    best_order = None
+    best_model = None
+
+    # Iterating over different values of p and q
+    for p in range(3):
+        for q in range(3):
+            try:
+                # Fitting the ARIMA model
+                model = ARIMA(yield_data, order=(p, 0, q))
+                model_fit = model.fit()
+
+                # Checking if the current model has a lower AIC and BIC than the best so far
+                if model_fit.aic < best_aic and model_fit.bic < best_bic:
+                    best_aic = model_fit.aic
+                    best_bic = model_fit.bic
+                    best_order = (p, 0, q)
+                    best_model = model_fit
+            except:
+                continue
+
+    # Number of steps to forecast
+    n_steps = 5
+
+    # Forecasting the next few steps
+    forecast = best_model.get_forecast(steps=n_steps)
+
+    # Extracting forecast mean and confidence intervals
+    forecast_mean = forecast.predicted_mean
+
+    # Correcting the approach to get the confidence intervals
+    confidence_intervals = forecast.conf_int()
+
+    # Adjusting the forecast index to align with the original data's timeline
+
+    # Getting the last date from the original data
+    last_date = yield_data.index[-1]
+
+    # Generating new forecast dates starting from the day after the last date
+    forecast_dates = pd.date_range(start=last_date, periods=n_steps + 1, freq='M')[1:]
+
+    # Assigning the new dates to the forecast and confidence intervals
+    forecast_mean.index = forecast_dates
+    confidence_intervals.index = forecast_dates
+
+    return yield_data, forecast_mean, confidence_intervals
+
+def plot_yield(yield_data, forecast_mean, confidence_intervals):
+    plt.figure(figsize=(12, 6))
+
+    # Plotting the original data
+    plt.plot(yield_data['Yield_per_Acre'], color='blue', label='Original Data')
+
+    # Plotting the forecast
+    plt.plot(forecast_mean, color='red', marker='o', label='Forecast')
+
+    # Plotting the confidence intervals
+    plt.fill_between(confidence_intervals.index, 
+                    confidence_intervals['lower Yield_per_Acre'], 
+                    confidence_intervals['upper Yield_per_Acre'], 
+                    color='pink', alpha=0.3, label='Confidence Interval')
+
+    plt.title('Forecast of Yield_Per_Acre with Confidence Intervals')
+    plt.xlabel('Date')
+    plt.ylabel('Yield_Per_Acre')
+    plt.legend()
+    plt.grid(True)
+
+    return plt
+
+
+
+
 
 
 
