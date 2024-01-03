@@ -15,13 +15,13 @@ import warnings
 st.title('Forecast of WASDE report')
 
 ########## get data  ##################
-# all_data_df = create_df()
-# df_cleaned = clean_cols(all_data_df)
-# df_cleaned = convert_numerical(df_cleaned)
-# df_cleaned = new_date_cols(df_cleaned)
+all_data_df = create_df()
+df_cleaned = clean_cols(all_data_df)
+df_cleaned = convert_numerical(df_cleaned)
+df_cleaned = new_date_cols(df_cleaned)
 
 # use csv file while developing to be faster
-df_cleaned = pd.read_csv("cleaned_data.csv")  
+#df_cleaned = pd.read_csv("cleaned_data.csv")  
 
 # prepare data for modelling
 most_recent, df_cleaned = prepare_for_modelling(df_cleaned)
